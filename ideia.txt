@@ -1,0 +1,950 @@
+PLANNER EMPRESARIAL PJ – VISÃO GERAL COMPLETA
+1. Objetivo do sistema
+
+Criar um aplicativo desktop em Python + PyQt5 + SQLite para controle empresarial (PJ), inspirado no Planner Financeiro PF, mas focado em:
+
+Multiempresas (várias empresas no mesmo .db, identificadas por codigoempresa).
+
+Uso por empresários e contabilidade ao mesmo tempo.
+
+Controle de:
+
+Fluxo financeiro (contas bancárias, cartões, investimentos).
+
+Importação de extratos (OFX e CSV, com suporte futuro a PDF).
+
+Categorização automatizada de transações (regras + IA + memória de favorecidos).
+
+Visão de tributos (não para apurar, só para enxergar).
+
+Visão de custo de pessoal por setor (folha, centros de custo).
+
+Projetos / Investimentos (equivalente aos “desejos” do PF, mas versão PJ).
+
+Patrimônio (ativos, bens, depreciação planejada no futuro).
+
+Interface moderna, com:
+
+Tema escuro/claro alternável em runtime.
+
+PyQt5, bordas arredondadas, fontes modernas (ex.: Segoe UI).
+
+Sidebar com ícone sanduíche para ocultar/mostrar o menu.
+
+Nada de cara de Windows XP.
+
+2. Público-alvo
+
+Empresários que querem ter visão clara de:
+
+Fluxo financeiro.
+
+Peso da folha por setor.
+
+Tributos (quanto sai todo mês).
+
+Projetos e investimentos em andamento.
+
+Contabilidades / escritórios contábeis:
+
+Para usar o mesmo app, mas em modo “multiempresas”.
+
+Cada empresa com seu próprio login, sem necessidade de um “super admin global” comandando tudo.
+
+O escritório pode orientar, configurar contas, categorias, tributos, etc., e o empresário usar no dia a dia.
+
+3. Premissas e filosofia geral
+
+Multiempresas simples
+
+Tudo no banco é segregado por codigoempresa.
+
+Mesmo arquivo .db, mas as consultas sempre filtram por codigoempresa.
+
+Login: usuário informa:
+
+Código da empresa (ex.: CLINICA_XYZ).
+
+Usuário.
+
+Senha.
+
+Cada empresa “vive na sua caixinha” dentro do mesmo banco.
+
+Login local, sem licensing/api externa
+
+Sem validação de licença, sem servidor.
+
+Sistema para uso interno do escritório e do empresário.
+
+Planner PJ ≠ Planner PF (mas inspirado)
+
+É outro programa, com outro banco (schema próprio).
+
+Podemos reaproveitar lógicas do PF:
+
+Importação de extratos.
+
+Deduplicação.
+
+Auto-categorização.
+
+Tratamento de cheque especial, cartões, investimentos.
+
+Mas as categorias, telas e linguagem são voltadas para empresa, não pessoa física.
+
+Sem apuração tributária automática
+
+O sistema não vai apurar imposto, DAS, IRPJ, CSLL etc.
+
+A aba de tributos é para:
+
+Registrar valores previstos e efetivamente pagos.
+
+Ter dashboards do tipo: “quanto minha empresa paga de imposto por mês/ano”.
+
+A apuração “hardcore” é responsabilidade da contabilidade.
+
+IA é auxiliar, não oráculo
+
+IA (ex.: Gemini) entra para:
+
+Sugerir categorias.
+
+Fazer insights, resumos, explicações rápidas na aba de IA.
+
+Sempre com mensagem clara de que se trata de estimativa/auxílio, não verdade absoluta.
+
+Controle de consumo de IA / tokens
+
+Nada de chamar IA a cada transação; isso estoura token rápido.
+
+Estratégia: agrupar transações desconhecidas (ex.: até 50) e mandar em lote para IA.
+
+Depois usuário confere em uma tela de revisão.
+
+4. Arquitetura técnica
+
+Tecnologia principal:
+
+Python 3.x (preferencialmente 3.11+).
+
+PyQt5 para UI (visual moderno).
+
+SQLite para armazenamento (planner_empresarial_pj.db).
+
+Organização de pastas (projeto):
+
+PlannerEmpresarialPJ/
+ ├─ main.py
+ ├─ requirements.txt
+ ├─ ideia.txt  (este documento)
+ ├─ core/
+ │   ├─ __init__.py
+ │   ├─ config.py          # caminhos, APP_NAME, DB
+ │   ├─ db.py              # conexão SQLite + schema
+ │   ├─ utils.py           # datas, conversões, hash, etc.
+ │   ├─ logs.py            # logging + logs_atividade
+ │   ├─ models.py          # queries de alto nível (empresas, users, contas, transações)
+ │   ├─ regras.py          # motor de auto-categorização
+ │   ├─ importacao.py      # parser OFX/CSV, staging, dedupe
+ │   └─ ia_client.py       # stub para IA em lote (futuro: Gemini)
+ ├─ ui/
+ │   ├─ __init__.py
+ │   ├─ theme.py           # temas claro/escuro
+ │   ├─ login_window.py    # tela de login/criação de empresa/usuário
+ │   ├─ main_window.py     # janela principal, sidebar, stack de páginas
+ │   └─ import_view.py     # tela de importação de extratos (staging + IA)
+ └─ resources/
+     └─ (ícones, imagens, etc.)
+
+
+Fluxo de inicialização:
+
+main.py:
+
+Cria QApplication.
+
+Define tema inicial (padrão: dark).
+
+Inicializa banco (init_db()).
+
+Abre LoginWindow.
+
+LoginWindow:
+
+Permite login em empresa existente.
+
+Permite criar nova empresa + usuário.
+
+Se login OK:
+
+Abre MainWindow(codigoempresa, usuario).
+
+5. Banco de dados (SQLite)
+
+Arquivo único: planner_empresarial_pj.db no diretório raiz do app.
+
+Regra de ouro: todas as tabelas “fortes” têm campo codigoempresa para suportar multiempresas.
+
+Principais tabelas (já desenhadas):
+
+empresas
+
+codigoempresa (unique) – ex.: CLINICA_SAOLUCAS.
+
+razao_social, nome_fantasia, cnpj.
+
+regime_tributario (Simples, Lucro Presumido, etc.).
+
+area_atuacao (clínica, transporte, comércio etc.).
+
+ativo.
+
+usuarios
+
+codigoempresa (FK lógica).
+
+username, senha_hash.
+
+perfil (ex.: empresario, contabilidade – pode ser útil depois).
+
+ativo.
+
+categories
+
+Categorias voltadas para PJ:
+
+tipo: receita, custo, despesa, tributo, pessoal, investimento, estoque, outro, etc.
+
+grupo para agrupamentos maiores (ex.: “Receitas de serviços”, “Despesas administrativas”).
+
+centros_custo
+
+Para custos por setor:
+
+Ex.: “Administrativo”, “Comercial”, “Operacional”, “Clínico”, etc.
+
+Usado especialmente na parte de folha e rateio de gastos.
+
+contas
+
+Contas financeiras:
+
+tipo_conta: corrente, poupanca, cartao_credito, investimento, caixa, conta_garantida etc.
+
+Campos para:
+
+Banco, agência, número.
+
+limite_cheque_especial.
+
+limite_cartao e dia_vencimento_fatura.
+
+favorecidos
+
+“Memória de fornecedores/clientes”:
+
+nome.
+
+tipo (fornecedor, cliente, funcionário, banco, governo etc.).
+
+categoria_padrao_id – categoria padrão quando esse favorecido aparece.
+
+centro_custo_padrao_id.
+
+descricao_padrao – ex.: “Compra de hortifrúti (alface, legumes, etc.)”.
+
+Serve para:
+
+Toda vez que aparece “João da Silva” de novo, o sistema já sugerir “Estoque – compra de alimentos” sem precisar de IA.
+
+importacoes_extrato
+
+Registro de cada import:
+
+tipo_arquivo (OFX/CSV/PDF).
+
+nome_arquivo.
+
+Período do extrato (inicio/fim).
+
+Totais:
+
+total_no_arquivo.
+
+total_deduplicados.
+
+total_importados.
+
+total_desconhecidos_pos_importacao.
+
+usuario_id que fez a importação.
+
+staging_transacoes_import
+
+Zona intermediária antes de virar transactions:
+
+data_lancamento.
+
+descricao_extrato.
+
+favorecido_texto.
+
+valor.
+
+forma_pagamento_detectada (detecção simples por descrição, ex: PIX, TED, BOLETO).
+
+categoria_sugerida_id, centro_custo_sugerido_id.
+
+origem_sugestao: regra, ia, desconhecido.
+
+status_classificacao: desconhecido, sugerido, confirmado.
+
+É aqui que entram:
+
+Regras de categorização.
+
+Sugestões da IA.
+
+Conferência manual do usuário.
+
+transactions
+
+Lançamentos consolidados (vida real da empresa):
+
+Conta, data de lançamento, data de competência.
+
+Descrição original e descrição tratada.
+
+Categoria, centro de custo, favorecido.
+
+Tipo de movimento: credito, debito, transferencia, ajuste, estorno.
+
+forma_pagamento.
+
+id_importacao.
+
+hash_unico (para dedupe mais avançado no futuro).
+
+conciliado (1/0).
+
+created_at, updated_at.
+
+regras_auto_categorizacao
+
+Conjunto de regras criado pelo usuário/contabilidade:
+
+campo_alvo: descricao_extrato, favorecido_texto, forma_pagamento.
+
+tipo_match: contem, igual, prefixo, sufixo, regex.
+
+padrao_texto.
+
+categoria_id, centro_custo_id.
+
+descricao_sugerida, forma_pagamento_fixa.
+
+prioridade (para conflitos).
+
+tributos
+
+Controle de tributos da empresa:
+
+tipo_tributo: ex.: Simples Nacional, INSS Empresa, FGTS, ISS, IRPJ, etc.
+
+competencia.
+
+valor_previsto, valor_pago.
+
+data_vencimento, data_pagamento.
+
+status (em aberto, pago, atrasado, etc.).
+
+observacoes.
+
+folha_setores
+
+Custo de pessoal por setor e competência:
+
+centro_custo_id.
+
+total_salarios.
+
+total_encargos.
+
+total_beneficios.
+
+total_terceirizados.
+
+total_geral.
+
+origem_info (ex.: manual, importado de planilha, integração no futuro).
+
+projetos
+
+Equivalente empresarial aos “desejos” do PF:
+
+nome, tipo (expansão, reforma, equipamento, marketing, etc.).
+
+Datas previstas de início/fim.
+
+orcamento_previsto.
+
+valor_realizado.
+
+status.
+
+responsavel.
+
+ativos
+
+Registro de bens:
+
+nome, tipo.
+
+data_aquisicao, valor_aquisicao.
+
+vida_util_meses, valor_residual.
+
+centro_custo_id.
+
+situacao (em uso, vendido, baixado, etc.).
+
+logs_atividade
+
+Trilhas de auditoria:
+
+codigoempresa.
+
+usuario_id.
+
+data_hora.
+
+acao (ex.: “importacao_extrato”, “login_sucesso”, “ia_classificacao_lote”).
+
+detalhes.
+
+origem_modulo.
+
+ia_logs
+
+Monitoramento de uso de IA:
+
+Tipo de chamada (ex.: classificacao_lote).
+
+Qtde de transações enviadas.
+
+Tokens de input/output.
+
+custo_estimado.
+
+sucesso / mensagem_erro.
+
+6. Módulos de interface (UI)
+6.1. Login (PyQt5)
+
+Janela moderna (QDialog):
+
+Título: “Planner Empresarial PJ”.
+
+Subtítulo: “Acesse com o código da empresa e seu usuário”.
+
+Campos:
+
+Código da empresa.
+
+Usuário.
+
+Senha (ocultada).
+
+Botões:
+
+“Criar empresa/usuário”:
+
+Cria um registro em empresas + um usuário em usuarios.
+
+“Entrar”:
+
+Valida hash da senha contra usuarios.
+
+6.2. Janela principal (MainWindow)
+
+Layout geral:
+
+QFrame lateral (Sidebar) com objectName="Sidebar" para estilização.
+
+QStackedWidget para páginas principais.
+
+Sidebar:
+
+Botão “☰ Ocultar menu” (sanduíche).
+
+Botões de navegação (QPushButton#NavButton checkáveis) para:
+
+Dashboard.
+
+Financeiro.
+
+Importação.
+
+Tributos.
+
+Folha / Setores.
+
+Projetos / Investimentos.
+
+Patrimônio.
+
+Chat IA.
+
+Acesso rápido IA.
+
+Configurações.
+
+Logs.
+
+Botão “Alternar tema (claro/escuro)” no final.
+
+Páginas (pelo menos esqueleto):
+
+Dashboard
+
+Visão geral dos principais indicadores (num segundo momento):
+
+Saldo consolidado por conta.
+
+Gráfico de receitas x despesas.
+
+Tributos do mês.
+
+Custo de pessoal por setor.
+
+Financeiro
+
+Tabela com lançamentos recentes (puxando de transactions):
+
+Data, Conta, Descrição, Valor, Categoria.
+
+Botão “Atualizar”.
+
+Futuro:
+
+Filtros por período, conta, categoria, centro de custo.
+
+Gráficos simples.
+
+Importação
+
+Embute ImportView.
+
+Fluxo:
+
+Selecionar conta.
+
+Selecionar arquivo (OFX/CSV).
+
+Preencher staging_transacoes_import.
+
+Ver tabela com:
+
+ID, Data, Descrição, Favorecido, Valor, Forma pagamento, Categoria sugerida, Origem sugestão.
+
+Botões:
+
+“Sugerir categorias via IA (desconhecidos)”.
+
+“Confirmar importação”.
+
+Tributos
+
+Página focada em:
+
+Listar tributos cadastrados por competência.
+
+Permitir informar valor previsto/pago.
+
+Futuro: gráficos tipo “quanto de imposto saiu este ano”.
+
+Folha / Setores
+
+Tabela das linhas de folha_setores.
+
+Base para visões:
+
+“Qual setor consome mais custo de pessoal?”
+
+“Evolução por competência”.
+
+Projetos / Investimentos
+
+Cadastros de projetos com orçamento x realizado.
+
+Patrimônio
+
+Listagem de ativos, com informações básicas.
+
+Chat IA
+
+Área estilo chat, para conversar com IA (no futuro, integrado ao Gemini).
+
+Uso livre, mas com logs no ia_logs.
+
+Acesso rápido IA
+
+Botões de ações rápidas, exemplos:
+
+“Analisar fluxo de caixa do mês”.
+
+“Resumir principais tributos pagos no ano”.
+
+“Sugerir corte de despesas com base nas categorias”.
+
+Cada botão monta um prompt pré-definido com base nos dados do banco.
+
+Configurações
+
+Configurações da empresa:
+
+Cadastro/edição de contas, categorias, centros de custo, favorecidos.
+
+Preferências de tema (padrão: escuro).
+
+Parâmetros de IA (ex.: chave de API, limites, etc. – futuro).
+
+Logs
+
+Visualização básica dos logs_atividade.
+
+Possibilidade de filtrar por período, módulo, usuário.
+
+7. Fluxo de importação de extratos
+
+Usuário seleciona:
+
+Empresa (já no login).
+
+Conta (combo de contas).
+
+Arquivo de extrato (OFX ou CSV).
+
+Sistema:
+
+Detecta formato pelo sufixo (.ofx, .csv, .pdf).
+
+Faz parsing:
+
+OFX:
+
+Lê <DTPOSTED>, <TRNAMT>, <MEMO>, etc.
+
+Monta linhas: data, valor, descrição, favorecido.
+
+CSV:
+
+Tenta achar colunas por nomes comuns: data, descrição, historico, valor, etc.
+
+Converte valor 1.234,56 → 1234.56.
+
+Deduplicação:
+
+Antes de gravar na staging, verifica se já existe em transactions:
+
+codigoempresa, conta_id, data_lancamento, valor, descricao_extrato.
+
+Se já existe, conta como deduplicado e ignora.
+
+Regras de auto-categorização:
+
+Para cada linha não deduplicada:
+
+Rodar aplicar_regras_auto_categorizacao(...) usando:
+
+Descrição do extrato.
+
+Favorecido.
+
+Forma de pagamento detectada (quando possível).
+
+Se encontrar match:
+
+Define categoria_sugerida_id, centro_custo_sugerido_id, descricao_sugerida, forma_pagamento_fixa.
+
+origem_sugestao = 'regra'.
+
+status_classificacao = 'sugerido'.
+
+Se não encontrar:
+
+origem_sugestao = 'desconhecido'.
+
+status_classificacao = 'desconhecido'.
+
+Staging:
+
+Todas as linhas não deduplicadas são gravadas em staging_transacoes_import.
+
+Campos de totais são atualizados em importacoes_extrato.
+
+Tabela de visualização:
+
+Usuário vê a staging na ImportView:
+
+Pode visualizar de forma limpa do tipo “pré-importação”.
+
+8. IA em lote para transações desconhecidas
+
+Motivação:
+Chamar IA para cada transação individualmente é ruim para custo e limite de API. Melhor:
+
+Após importação, sistema identifica transações em staging com:
+
+status_classificacao = 'desconhecido'
+
+ou categoria_sugerida_id IS NULL.
+
+Limita a um lote (ex.: 50 transações).
+
+Monta payload para IA (no futuro):
+
+Para cada item:
+
+id_staging.
+
+descrição_extrato.
+
+favorecido_texto.
+
+valor (para ao menos saber se é crédito ou débito).
+
+Envia tudo em uma única chamada ao modelo (ex.: Gemini).
+
+Recebe estrutura do tipo:
+
+{id_staging: {categoria_nome, descricao_tratada, centro_custo_nome}}.
+
+Tela de conferência:
+
+QDialog com tabela:
+
+Mostra primeiro as transações que continuaram desconhecidas (IA não conseguiu classificar).
+
+Depois as que ganharam sugestão.
+
+Usuário visualiza, aceita em bloco (primeira versão simples) ou, no futuro, pode editar manualmente.
+
+Ao aplicar:
+
+Atualiza staging_transacoes_import:
+
+origem_sugestao = 'ia'.
+
+status_classificacao = 'sugerido'.
+
+Futuro:
+
+Criar automaticamente regras ou favorecidos com base nas escolhas confirmadas (memória inteligente).
+
+Observação sobre PIX:
+
+PIX não é categoria, é forma de pagamento.
+
+A categorização deve olhar:
+
+descrição,
+
+favorecido,
+
+histórico,
+
+e não apenas “é pix”.
+
+Se não for possível inferir, deixa desconhecido, e IA / humano decide depois.
+
+9. Lógica de “memória” para favorecidos
+
+Caso clássico:
+“João da Silva” é quem fornece alface para um restaurante.
+
+Fluxo desejado:
+
+Na primeira vez:
+
+Importação vê “João da Silva”, não tem regra, não tem favorecido → classifica como desconhecido.
+
+Usuário (ou IA) decide:
+
+Categoria: Custo de mercadorias → ex.: “Estoque – Alimentos”.
+
+Descrição tratada: “Compra de hortifrúti (alface, legumes, etc.)”.
+
+Sistema:
+
+Pode gravar ou sugerir registrar “João da Silva” em favorecidos com:
+
+categoria_padrao_id.
+
+descricao_padrao.
+
+Na segunda vez que “João da Silva” aparecer:
+
+Sistema detecta favorecidos.nome ou outro identificador textual.
+
+Aplica automaticamente a categoria + descrição padrão.
+
+Logo, a IA é usada menos ao longo do tempo, e a “memória” do sistema vai crescendo.
+
+10. Confirmação da importação
+
+Quando o usuário estiver satisfeito com a classificação na tela de staging:
+
+Clica em “Confirmar importação”.
+
+Sistema:
+
+Percorre as linhas da staging para aquela importacao_id.
+
+Para cada linha:
+
+Determina:
+
+tipo_movimento: credito se valor > 0, debito se < 0.
+
+data_lancamento, data_competencia (pode começar igual).
+
+descricao_extrato, descricao_tratada.
+
+categoria_id, centro_custo_id.
+
+forma_pagamento.
+
+Insere em transactions.
+
+Atualiza importacoes_extrato.total_importados.
+
+Opcionalmente, limpa a staging ou marca algum status (primeira versão, pode apenas manter).
+
+11. Temas e UX
+
+Tema escuro (default):
+
+Fundo base: #121212 / #181818.
+
+Textos claros (#f5f5f5).
+
+Botões com:
+
+border-radius: 6px.
+
+Hover e pressed com graduações de cinza.
+
+Sidebar com:
+
+Fundo #1E1E1E, borda à direita.
+
+Tema claro:
+
+Fundo base: #f5f5f5 / #ffffff.
+
+Textos escuros (#202020).
+
+Botões com borda suave (#dddddd), fundo claro.
+
+Bordas arredondadas em:
+
+Botões.
+
+Inputs.
+
+Tabelas (no limite do possível via QSS).
+
+Nada de cara quadrada, cinza, padrão Tkinter.
+
+Troca de tema:
+
+Botão “Alternar tema (claro/escuro)” na sidebar.
+
+Aplica via app.setStyleSheet(...) usando theme.apply_theme.
+
+12. Roadmap macro (para você usar como D30/D60/D90 mental)
+
+Fase 1 – Núcleo financeiro (equivalente a D30):
+
+Multiempresa.
+
+Login.
+
+Contas.
+
+Importação OFX/CSV.
+
+Staging e dedupe.
+
+Regras de categorização.
+
+IA stub em lote + tela de conferência.
+
+Importação confirmando em transactions.
+
+Financeiro: listagem das transações.
+
+Tema dark/clear + UI moderna.
+
+Fase 2 – Gestão tributária e folha (D60):
+
+Aba Tributos funcional (cadastro + visão por mês/ano).
+
+Aba Folha / Setores (import/lançamento manual dos custos).
+
+Gráficos básicos: imposto por mês, custo por setor.
+
+Melhorias de filtros e relatórios.
+
+Fase 3 – Projetos, patrimônio e IA avançada (D90):
+
+Projetos / Investimentos:
+
+orçamento x realizado.
+
+Patrimônio:
+
+bens + relatórios.
+
+Chat IA e Acesso Rápido IA:
+
+integração real com API (Gemini ou outro modelo).
+
+prompts pré-definidos úteis ao empresário.
+
+Eventual integração com outros módulos (estoque, NF-e, etc.).
+
+Estrutura:
+planner_empresarial/
+├─ main.py                 # ponto de entrada; cria QApplication, aplica tema, abre Login
+├─ core/
+│  ├─ __init__.py          # marca o pacote
+│  ├─ config.py            # configurações gerais (nome do app, caminhos, versão)
+│  ├─ db.py                # conexão SQLite e criação do schema
+│  ├─ models.py            # funções de acesso a dados (empresas, usuários, contas, transações, etc.)
+│  ├─ importacao.py        # lógica de importação de OFX/CSV, deduplicação, staging
+│  ├─ regras.py            # motor de auto‑categorização (regras configuráveis)
+│  ├─ ia_client.py         # integrações com IA (Gemini) em lote para classificar transações
+│  ├─ logs.py              # utilitário de logging; grava em logs_atividade e/ou no disco
+│  └─ utils.py             # funções utilitárias (datas, conversões, hash de dedupe)
+├─ ui/
+│  ├─ __init__.py
+│  ├─ login_window.py      # tela de login/criação de empresa/usuário
+│  ├─ main_window.py       # janela principal com menu lateral e páginas
+│  ├─ import_view.py       # tela de importação de extratos (staging + IA)
+│  ├─ accounts_view.py     # gerenciamento de contas bancárias
+│  ├─ categories_view.py   # gerenciamento de categorias
+│  ├─ orcamentos_view.py   # gerenciamento de orçamentos
+│  └─ …                    # outras páginas (recorrentes, tributos, folha, etc.)
+├─ resources/
+│  ├─ dark.qss             # tema escuro (Qt Style Sheet)
+│  ├─ light.qss            # tema claro (opcional)
+│  └─ icons/               # ícones (dashboard.png, tributos.png, etc.)
+├─ data/
+│  ├─ planner_empresarial_pj.db  # banco SQLite criado pelo app (não versionar)
+│  └─ logs/                # pasta para arquivos de log, se desejar
+└─ config_api.json         # chaves de API externas (ex.: chaves do Gemini); mantenha fora de controle de versão

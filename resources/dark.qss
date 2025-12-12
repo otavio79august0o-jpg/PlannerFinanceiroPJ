@@ -1,0 +1,122 @@
+/* Tema escuro moderno para Planner Empresarial PJ */
+
+QWidget {
+    background-color: #020617; /* slate-950 */
+    color: #e5e7eb;            /* slate-200 */
+    font-family: "Segoe UI";
+    font-size: 10pt;
+}
+
+QFrame#TopBar {
+    background-color: #020617;
+    border-bottom: 1px solid #1e293b;
+}
+
+QLabel#TopBarTitle {
+    font-size: 11pt;
+    font-weight: 600;
+    color: #e5e7eb;
+}
+
+QFrame#Sidebar {
+    background-color: #020617;
+    border-right: 1px solid #1e293b;
+}
+
+QPushButton {
+    background-color: #0f172a;
+    color: #e5e7eb;
+    border-radius: 8px;
+    padding: 6px 10px;
+    border: 1px solid #1f2937;
+}
+
+QPushButton:hover {
+    background-color: #111827;
+}
+
+QPushButton:pressed {
+    background-color: #1f2937;
+}
+
+QPushButton#NavButton {
+    background-color: transparent;
+    border-radius: 8px;
+    border: none;
+    text-align: left;
+    padding: 8px 14px;
+}
+
+QPushButton#NavButton:hover {
+    background-color: #0f172a;
+}
+
+QPushButton#NavButton:checked {
+    background-color: #2563eb; /* azul principal */
+    color: #f9fafb;
+    font-weight: 600;
+}
+
+QPushButton#MenuButton {
+    background-color: transparent;
+    border: none;
+    font-size: 14pt;
+    padding: 4px 10px;
+}
+
+QPushButton#MenuButton:hover {
+    background-color: #0f172a;
+    border-radius: 8px;
+}
+
+QLineEdit, QComboBox, QSpinBox, QDateEdit {
+    background-color: #020617;
+    border: 1px solid #1f2937;
+    border-radius: 6px;
+    padding: 4px 6px;
+    selection-background-color: #2563eb;
+    selection-color: #f9fafb;
+}
+
+QTableWidget {
+    background-color: #020617;
+    gridline-color: #273549;
+    border-radius: 10px;
+    border: 1px solid #1e293b;
+}
+
+QHeaderView::section {
+    background-color: #0b1120;
+    color: #e5e7eb;
+    padding: 6px 4px;
+    border: none;
+    border-bottom: 1px solid #1f2937;
+}
+
+QScrollBar:vertical {
+    background: #020617;
+    width: 10px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background: #334155;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #475569;
+}
+
+/* Dialogs */
+
+QDialog {
+    background-color: #020617;
+    border-radius: 12px;
+}
+
+/* Texto secundário (legendas, avisos) */
+.QLabel[secondary="true"] {
+    color: #9ca3af;
+    font-size: 9pt;
+}
